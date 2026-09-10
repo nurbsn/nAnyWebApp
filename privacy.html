@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polityka Prywatności – nAnyWebApp</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.65;
+            color: #24292e;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background-color: #fcfcfc;
+        }
+        .container {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e1e4e8;
+        }
+        h1 {
+            color: #512bd4;
+            margin-top: 0;
+            font-size: 28px;
+        }
+        h2 {
+            color: #333333;
+            font-size: 20px;
+            margin-top: 28px;
+            border-bottom: 1px solid #eaecef;
+            padding-bottom: 8px;
+        }
+        .badge {
+            display: inline-block;
+            background-color: #f1f0fd;
+            color: #512bd4;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        code {
+            background-color: #f6f8fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+        }
+        .footer {
+            margin-top: 36px;
+            padding-top: 16px;
+            border-top: 1px solid #eaecef;
+            font-size: 13px;
+            color: #586069;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="badge">Pakiet: eu.gfmm.nanywebapp</span>
+        <h1>Polityka Prywatności – nAnyWebApp</h1>
+        <p><em>Ostatnia aktualizacja: 10 września 2026 r.</em></p>
+        
+        <p>Aplikacja <strong>nAnyWebApp</strong> została stworzona jako narzędzie użytkowe umożliwiające przekształcanie stron internetowych w samodzielne aplikacje z opcją wstrzykiwania niestandardowego kodu CSS i JavaScript. Szanujemy prywatność użytkowników i dbamy o bezpieczeństwo ich danych.</p>
+
+        <h2>1. Jakie informacje gromadzimy?</h2>
+        <p>Aplikacja <strong>nAnyWebApp nie gromadzi, nie przetwarza ani nie przesyła żadnych danych osobowych ani informacji o użytkowniku na zewnętrzne serwery twórcy aplikacji</strong>.</p>
+        <ul>
+            <li><strong>Zapisane strony i skrypty:</strong> Wszelkie dodane przez użytkownika adresy URL, niestandardowe reguły CSS, skrypty JavaScript oraz reguły podstron są przechowywane <strong>wyłącznie lokalnie</strong> w bezpiecznej pamięci Twojego urządzenia (<code>FileSystem.AppDataDirectory</code>).</li>
+            <li><strong>Pamięć podręczna i pliki cookie:</strong> Treści przeglądanych stron internetowych, sesje logowania i ciasteczka są obsługiwane bezpośrednio przez wbudowany komponent systemowy Android WebView. Dane te nie są przekazywane autorowi aplikacji.</li>
+        </ul>
+
+        <h2>2. Wykorzystywane uprawnienia</h2>
+        <ul>
+            <li><code>android.permission.INTERNET</code> – Wymagane do pobierania i ładowania zawartości stron internetowych w komponencie WebView.</li>
+            <li><code>android.permission.ACCESS_NETWORK_STATE</code> – Wymagane do sprawdzania dostępności aktywnego połączenia z siecią.</li>
+            <li><code>ShortcutManager / Pinned Shortcuts</code> – Używane wyłącznie na bezpośrednie żądanie użytkownika w celu przypięcia skrótu wybranej strony do ekranu głównego urządzenia.</li>
+        </ul>
+
+        <h2>3. Udostępnianie danych podmiotom trzecim</h2>
+        <p>Aplikacja nie udostępnia, nie sprzedaje ani nie przekazuje żadnych danych podmiotom trzecim. Wszelkie interakcje sieciowe zachodzą wyłącznie pomiędzy Twoim urządzeniem a stronami internetowymi, które sam decydujesz się odwiedzić.</p>
+
+        <h2>4. Dzieci</h2>
+        <p>Aplikacja nie jest skierowana bezpośrednio do dzieci poniżej 13 roku życia i świadomie nie gromadzi żadnych danych osobowych od dzieci.</p>
+
+        <h2>5. Kontakt</h2>
+        <p>W przypadku pytań dotyczących niniejszej polityki prywatności prosimy o kontakt:</p>
+        <ul>
+            <li>Strona domowa: <a href="https://eu.gfmm" target="_blank" rel="noopener noreferrer">https://eu.gfmm</a></li>
+            <li>Adres e-mail: kontakt powiązany z domeną <strong>eu.gfmm</strong></li>
+            <li>Repozytorium kodu: <a href="https://github.com/nurbsn/nAnyWebApp" target="_blank" rel="noopener noreferrer">https://github.com/nurbsn/nAnyWebApp</a></li>
+        </ul>
+
+        <div class="footer">
+            &copy; 2026 eu.gfmm. Wszelkie prawa zastrzeżone.
+        </div>
+    </div>
+</body>
+</html>
