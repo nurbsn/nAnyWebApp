@@ -1,38 +1,40 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
 
-namespace nAnyWebApp.Services
+namespace nAnyWebApp.Services;
+
+/// <summary>
+/// Prosty, bezpieczny menedżer przechowywania danych w pliku JSON
+/// </summary>
+public class nJORM<T> : IEnumerable<T> where T : class
 {
-    // Prosty ORM do zarządzania danymi
-    public class nJORM<T> : IEnumerable<T> where T : class
+    private List<T> _data = new();
+    private readonly string _filePath;
+    private readonly object _lock = new();
+
+    public nJORM(string filePath)
     {
-        private List<T> _data;
-        private string _filePath;
+        _filePath = filePath;
+        LoadData();
+    }
 
+    public IEnumerator<T> GetEnumerator()
+    {
+        lock (_lock)
+        {
+            return new List<T>(_data).GetEnumerator();
+        }
+    }
 
-        public nJORM(string filePath)
-        {
-            _filePath = filePath;
-            LoadData();
-        }
-        // Implementacja IEnumerable<T>
-        public IEnumerator<T> GetEnumerator()
-        {
-            return _data.GetEnumerator();
-        }
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        // Implementacja IEnumerable (niegeneryczna)
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-        // Ładowanie danych z pliku JSON
-        
-        private void LoadData()
+    public void LoadData()
+    {
+        lock (_lock)
         {
             try
             {
@@ -46,60 +48,87 @@ namespace nAnyWebApp.Services
                     _data = new List<T>();
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                Console.WriteLine($"{DateTime.Now} error: nJORM->LoadData: {ex.Message}");
+                Debug.WriteLine($"nJORM->LoadData error: {ex.Message}");
+                _data = new List<T>();
             }
         }
+    }
 
-        // Zapisywanie danych do pliku JSON
-        private void SaveData()
+    public void SaveData()
+    {
+        lock (_lock)
         {
             try
             {
-                var json = JsonSerializer.Serialize(_data);
+                var dir = Path.GetDirectoryName(_filePath);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                var json = JsonSerializer.Serialize(_data, options);
                 File.WriteAllText(_filePath, json);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{DateTime.Now} error: nJORM->SaveData: {ex.Message}");
-                var json = JsonSerializer.Serialize(_data);
+                Debug.WriteLine($"nJORM->SaveData error: {ex.Message}");
             }
         }
+    }
 
-        // Dodawanie nowego rekordu
-        public void Add(T item)
+    public void Add(T item)
+    {
+        lock (_lock)
         {
             _data.Add(item);
             SaveData();
         }
+    }
 
-        // Pobieranie wszystkich rekordów
-        public IEnumerable<T> GetAll()
+    public IEnumerable<T> GetAll()
+    {
+        lock (_lock)
         {
-            return _data;
+            return new List<T>(_data);
         }
+    }
 
-        // Pobieranie rekordu po ID (zakładając, że model ma właściwość Id)
-        public T GetById(int id)
+    public T? GetById(object id)
+    {
+        lock (_lock)
         {
-            return _data.FirstOrDefault(item => (int)item.GetType().GetProperty("Id").GetValue(item) == id);
+            return _data.FirstOrDefault(item =>
+            {
+                var prop = item.GetType().GetProperty("Id");
+                return prop != null && Equals(prop.GetValue(item)?.ToString(), id.ToString());
+            });
         }
+    }
 
-        // Aktualizacja rekordu
-        public void Update(T item)
+    public void Update(T item)
+    {
+        lock (_lock)
         {
-            var existingItem = GetById((int)item.GetType().GetProperty("Id").GetValue(item));
+            var prop = item.GetType().GetProperty("Id");
+            if (prop == null) return;
+
+            var id = prop.GetValue(item);
+            var existingItem = _data.FirstOrDefault(i => Equals(prop.GetValue(i)?.ToString(), id?.ToString()));
             if (existingItem != null)
             {
-                _data.Remove(existingItem);
-                _data.Add(item);
+                var index = _data.IndexOf(existingItem);
+                _data[index] = item;
                 SaveData();
             }
         }
+    }
 
-        // Usuwanie rekordu
-        public void Delete(int id)
+    public void Delete(object id)
+    {
+        lock (_lock)
         {
             var itemToRemove = GetById(id);
             if (itemToRemove != null)
@@ -108,52 +137,5 @@ namespace nAnyWebApp.Services
                 SaveData();
             }
         }
-    }
-
-    // Przykład użycia
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            var orm = new nJORM<Person>("data.json");
-
-            // Dodawanie nowych osób
-            orm.Add(new Person { Id = 1, Name = "John Doe", Age = 30 });
-            orm.Add(new Person { Id = 2, Name = "Jane Doe", Age = 25 });
-
-            // Pobieranie wszystkich osób
-            var allPeople = orm.GetAll();
-            foreach (var person in allPeople)
-            {
-                Console.WriteLine($"ID: {person.Id}, Name: {person.Name}, Age: {person.Age}");
-            }
-
-            // Pobieranie osoby po ID
-            var personById = orm.GetById(1);
-            if (personById != null)
-            {
-                Console.WriteLine($"Found person: {personById.Name}");
-            }
-
-            // Aktualizacja osoby
-            var personToUpdate = orm.GetById(2);
-            if (personToUpdate != null)
-            {
-                personToUpdate.Name = "Jane Smith";
-                orm.Update(personToUpdate);
-                orm.GetAll();
-            }
-
-            // Usuwanie osoby
-            orm.Delete(1);
-        }
-    }
-
-    // Klasa reprezentująca model danych
-    public class Person
-    {
-        public int Id { get; set; }
-        public string Name { get; set; }
-        public int Age { get; set; }
     }
 }
