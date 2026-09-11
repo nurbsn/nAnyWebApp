@@ -9,10 +9,25 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "=== nAnyWebApp - Budowanie paczki Google Play (AAB) ===" -ForegroundColor Cyan
 
-# Lokalizacja keytool
-$keytoolPath = "C:\Program Files\Android\openjdk\jdk-21.0.8\bin\keytool.exe"
-if (-not (Test-Path $keytoolPath)) {
-    $keytoolPath = (Get-Command keytool.exe -ErrorAction SilentlyContinue)?.Source
+# Lokalizacja keytool (kompatybilna z roznymi wersjami JDK / PowerShell 5.1 i 7+)
+$keytoolCandidates = @(
+    "C:\Program Files\Android\openjdk\jdk-21.0.8\bin\keytool.exe",
+    "C:\Program Files (x86)\Android\openjdk\jdk-21.0.8\bin\keytool.exe"
+)
+
+$keytoolPath = ""
+foreach ($candidate in $keytoolCandidates) {
+    if (Test-Path $candidate) {
+        $keytoolPath = $candidate
+        break
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($keytoolPath)) {
+    $cmd = Get-Command "keytool.exe" -ErrorAction SilentlyContinue
+    if ($cmd) {
+        $keytoolPath = $cmd.Source
+    }
 }
 
 if (-not (Test-Path $KeystoreFile)) {
@@ -20,12 +35,12 @@ if (-not (Test-Path $KeystoreFile)) {
     Write-Host "Generowanie nowego klucza podpisu (Upload Keystore)..." -ForegroundColor Green
     
     if ([string]::IsNullOrWhiteSpace($Password)) {
-        $Password = Read-Host -Prompt "Podaj bezpieczne haslo dla nowego klucza podpisu" -AsSecureString
-        $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
+        $secPwd = Read-Host -Prompt "Podaj bezpieczne haslo dla nowego klucza podpisu" -AsSecureString
+        $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secPwd)
         $Password = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
     }
 
-    if (-not (Test-Path $keytoolPath)) {
+    if ([string]::IsNullOrWhiteSpace($keytoolPath) -or (-not (Test-Path $keytoolPath))) {
         Write-Error "Nie znaleziono narzedzia keytool.exe. Upewnij sie, ze zainstalowano pakiet OpenJDK."
         exit 1
     }
@@ -38,8 +53,8 @@ if (-not (Test-Path $KeystoreFile)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($Password)) {
-    $Password = Read-Host -Prompt "Podaj haslo do magazynu kluczy $KeystoreFile" -AsSecureString
-    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Password)
+    $secPwd = Read-Host -Prompt "Podaj haslo do magazynu kluczy $KeystoreFile" -AsSecureString
+    $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secPwd)
     $Password = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 }
 
@@ -53,13 +68,16 @@ dotnet publish nAnyWebApp/nAnyWebApp.csproj -f net9.0-android -c Release `
     -p:AndroidSigningKeyPass=$Password `
     -p:AndroidSigningStorePass=$Password
 
-$outputAab = Get-ChildItem -Path "nAnyWebApp\bin\Release\net9.0-android\publish" -Filter "*Signed.aab" | Select-Object -First 1
+$publishDir = "nAnyWebApp\bin\Release\net9.0-android\publish"
+$outputAab = Get-ChildItem -Path $publishDir -Filter "*Signed.aab" -ErrorAction SilentlyContinue | Select-Object -First 1
 
 if ($outputAab) {
     Write-Host "`nSUKCES! Gotowa paczka do wgrania do Google Play Console:" -ForegroundColor Green
     Write-Host $outputAab.FullName -ForegroundColor Yellow
 } else {
-    $fallbackAab = Get-ChildItem -Path "nAnyWebApp\bin\Release\net9.0-android" -Filter "*.aab" | Select-Object -First 1
-    Write-Host "`nPaczka wygenerowana w:" -ForegroundColor Green
-    Write-Host $fallbackAab.FullName -ForegroundColor Yellow
+    $fallbackAab = Get-ChildItem -Path "nAnyWebApp\bin\Release\net9.0-android" -Filter "*.aab" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($fallbackAab) {
+        Write-Host "`nPaczka wygenerowana w:" -ForegroundColor Green
+        Write-Host $fallbackAab.FullName -ForegroundColor Yellow
+    }
 }
