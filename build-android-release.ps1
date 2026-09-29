@@ -7,6 +7,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+$scriptDir = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+if ([string]::IsNullOrWhiteSpace($scriptDir)) { $scriptDir = $PWD.Path }
+
+$keystoreFullPath = if ([System.IO.Path]::IsPathRooted($KeystoreFile)) { $KeystoreFile } else { Join-Path $scriptDir $KeystoreFile }
+$projectPath = Join-Path $scriptDir "nAnyWebApp\nAnyWebApp.csproj"
+
 Write-Host "=== nAnyWebApp - Budowanie paczki Google Play (AAB) ===" -ForegroundColor Cyan
 
 # Lokalizacja keytool (kompatybilna z roznymi wersjami JDK / PowerShell 5.1 i 7+)
@@ -30,8 +36,8 @@ if ([string]::IsNullOrWhiteSpace($keytoolPath)) {
     }
 }
 
-if (-not (Test-Path $KeystoreFile)) {
-    Write-Host "`nNie znaleziono pliku klucza: $KeystoreFile" -ForegroundColor Yellow
+if (-not (Test-Path $keystoreFullPath)) {
+    Write-Host "`nNie znaleziono pliku klucza: $keystoreFullPath" -ForegroundColor Yellow
     Write-Host "Generowanie nowego klucza podpisu (Upload Keystore)..." -ForegroundColor Green
     
     if ([string]::IsNullOrWhiteSpace($Password)) {
@@ -45,15 +51,15 @@ if (-not (Test-Path $KeystoreFile)) {
         exit 1
     }
 
-    & $keytoolPath -genkeypair -v -keystore $KeystoreFile -alias $KeyAlias -keyalg RSA -keysize 2048 -validity 10000 `
+    & $keytoolPath -genkeypair -v -keystore $keystoreFullPath -alias $KeyAlias -keyalg RSA -keysize 2048 -validity 10000 `
         -storepass $Password -keypass $Password -dname "CN=nAnyWebApp, O=gfmm, C=EU"
         
-    Write-Host "Utworzono klucz: $KeystoreFile (Alias: $KeyAlias)" -ForegroundColor Green
+    Write-Host "Utworzono klucz: $keystoreFullPath (Alias: $KeyAlias)" -ForegroundColor Green
     Write-Host "UWAGA: Zachowaj ten plik i haslo w bezpiecznym miejscu! Bedzie potrzebny do kazdej kolejnej aktualizacji w Google Play." -ForegroundColor Red
 }
 
 if ([string]::IsNullOrWhiteSpace($Password)) {
-    $secPwd = Read-Host -Prompt "Podaj haslo do magazynu kluczy $KeystoreFile" -AsSecureString
+    $secPwd = Read-Host -Prompt "Podaj haslo do magazynu kluczy $keystoreFullPath" -AsSecureString
     $BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secPwd)
     $Password = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 }
@@ -61,26 +67,32 @@ if ([string]::IsNullOrWhiteSpace($Password)) {
 # Weryfikacja hasła do magazynu kluczy przed rozpoczęciem kompilacji
 if (-not [string]::IsNullOrWhiteSpace($keytoolPath) -and (Test-Path $keytoolPath)) {
     Write-Host "`nWeryfikacja hasla do magazynu kluczy..." -ForegroundColor Cyan
-    $verifyOutput = & $keytoolPath -list -keystore $KeystoreFile -storepass $Password 2>&1
+    $verifyOutput = & $keytoolPath -list -keystore $keystoreFullPath -storepass $Password 2>&1
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "BLAD: Podane haslo do magazynu kluczy '$KeystoreFile' jest niepoprawne!" -ForegroundColor Red
+        Write-Host "BLAD: Podane haslo do magazynu kluczy jest niepoprawne!" -ForegroundColor Red
         Write-Host "Upewnij sie, ze wpisujesz dokladnie to samo haslo, ktore zostalo uzyte przy tworzeniu pliku." -ForegroundColor Yellow
         exit 1
     }
     Write-Host "Haslo prawidlowe!" -ForegroundColor Green
 }
 
-# Usuniecie starych plikow AAB, aby miec pewnosc, ze wgrywana jest nowa paczka
-Write-Host "`nCzyszczenie starych plikow AAB z katalogu wynikowego..." -ForegroundColor Gray
-Get-ChildItem -Path "nAnyWebApp\bin\Release\net9.0-android" -Filter "*.aab" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
+# Czyszczenie zablokowanych lub przestarzałych plików obj/Release i AAB
+Write-Host "`nCzyszczenie tymczasowych plikow kompilacji..." -ForegroundColor Gray
+$objRelease = Join-Path $scriptDir "nAnyWebApp\obj\Release"
+if (Test-Path $objRelease) {
+    Remove-Item -Path $objRelease -Recurse -Force -ErrorAction SilentlyContinue
+}
 
-$keystoreFullPath = [System.IO.Path]::GetFullPath($KeystoreFile)
+$binAndroidRelease = Join-Path $scriptDir "nAnyWebApp\bin\Release\net9.0-android"
+if (Test-Path $binAndroidRelease) {
+    Get-ChildItem -Path $binAndroidRelease -Filter "*.aab" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
+}
 
 Write-Host "`nKompilacja i publikacja do Android App Bundle (AAB)..." -ForegroundColor Cyan
 Write-Host "Klucz: $keystoreFullPath" -ForegroundColor Gray
 Write-Host "Alias: $KeyAlias" -ForegroundColor Gray
 
-dotnet publish nAnyWebApp/nAnyWebApp.csproj -f net9.0-android -c Release `
+dotnet publish "$projectPath" -f net9.0-android -c Release `
     -p:AndroidPackageFormat=aab `
     -p:AndroidKeyStore=true `
     -p:AndroidSigningKeyStore="$keystoreFullPath" `
@@ -88,7 +100,7 @@ dotnet publish nAnyWebApp/nAnyWebApp.csproj -f net9.0-android -c Release `
     -p:AndroidSigningKeyPass=$Password `
     -p:AndroidSigningStorePass=$Password
 
-$publishDir = "nAnyWebApp\bin\Release\net9.0-android\publish"
+$publishDir = Join-Path $scriptDir "nAnyWebApp\bin\Release\net9.0-android\publish"
 $outputAab = Get-ChildItem -Path $publishDir -Filter "*Signed.aab" -ErrorAction SilentlyContinue | Select-Object -First 1
 
 if ($outputAab) {
@@ -98,10 +110,9 @@ if ($outputAab) {
     Write-Host "========================================================`n" -ForegroundColor Green
     Write-Host "Mozesz teraz wgrac ten plik bezposrednio do Google Play Console." -ForegroundColor Cyan
 } else {
-    $fallbackAab = Get-ChildItem -Path "nAnyWebApp\bin\Release\net9.0-android" -Filter "*.aab" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    $fallbackAab = Get-ChildItem -Path $binAndroidRelease -Filter "*.aab" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($fallbackAab) {
         Write-Host "`nPaczka wygenerowana w:" -ForegroundColor Green
         Write-Host $fallbackAab.FullName -ForegroundColor Yellow
     }
 }
-
