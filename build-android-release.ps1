@@ -58,12 +58,32 @@ if ([string]::IsNullOrWhiteSpace($Password)) {
     $Password = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
 }
 
+# Weryfikacja hasła do magazynu kluczy przed rozpoczęciem kompilacji
+if (-not [string]::IsNullOrWhiteSpace($keytoolPath) -and (Test-Path $keytoolPath)) {
+    Write-Host "`nWeryfikacja hasla do magazynu kluczy..." -ForegroundColor Cyan
+    $verifyOutput = & $keytoolPath -list -keystore $KeystoreFile -storepass $Password 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "BLAD: Podane haslo do magazynu kluczy '$KeystoreFile' jest niepoprawne!" -ForegroundColor Red
+        Write-Host "Upewnij sie, ze wpisujesz dokladnie to samo haslo, ktore zostalo uzyte przy tworzeniu pliku." -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "Haslo prawidlowe!" -ForegroundColor Green
+}
+
+# Usuniecie starych plikow AAB, aby miec pewnosc, ze wgrywana jest nowa paczka
+Write-Host "`nCzyszczenie starych plikow AAB z katalogu wynikowego..." -ForegroundColor Gray
+Get-ChildItem -Path "nAnyWebApp\bin\Release\net9.0-android" -Filter "*.aab" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force
+
+$keystoreFullPath = [System.IO.Path]::GetFullPath($KeystoreFile)
+
 Write-Host "`nKompilacja i publikacja do Android App Bundle (AAB)..." -ForegroundColor Cyan
+Write-Host "Klucz: $keystoreFullPath" -ForegroundColor Gray
+Write-Host "Alias: $KeyAlias" -ForegroundColor Gray
 
 dotnet publish nAnyWebApp/nAnyWebApp.csproj -f net9.0-android -c Release `
     -p:AndroidPackageFormat=aab `
     -p:AndroidKeyStore=true `
-    -p:AndroidSigningKeyStore="..\$KeystoreFile" `
+    -p:AndroidSigningKeyStore="$keystoreFullPath" `
     -p:AndroidSigningKeyAlias=$KeyAlias `
     -p:AndroidSigningKeyPass=$Password `
     -p:AndroidSigningStorePass=$Password
@@ -72,8 +92,11 @@ $publishDir = "nAnyWebApp\bin\Release\net9.0-android\publish"
 $outputAab = Get-ChildItem -Path $publishDir -Filter "*Signed.aab" -ErrorAction SilentlyContinue | Select-Object -First 1
 
 if ($outputAab) {
-    Write-Host "`nSUKCES! Gotowa paczka do wgrania do Google Play Console:" -ForegroundColor Green
+    Write-Host "`n========================================================" -ForegroundColor Green
+    Write-Host "SUKCES! Gotowa, produkcyjnie podpisana paczka AAB:" -ForegroundColor Green
     Write-Host $outputAab.FullName -ForegroundColor Yellow
+    Write-Host "========================================================`n" -ForegroundColor Green
+    Write-Host "Mozesz teraz wgrac ten plik bezposrednio do Google Play Console." -ForegroundColor Cyan
 } else {
     $fallbackAab = Get-ChildItem -Path "nAnyWebApp\bin\Release\net9.0-android" -Filter "*.aab" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($fallbackAab) {
@@ -81,3 +104,4 @@ if ($outputAab) {
         Write-Host $fallbackAab.FullName -ForegroundColor Yellow
     }
 }
+
