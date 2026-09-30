@@ -85,7 +85,10 @@ def upload_bundle(aab_path=None, track='production', status='completed'):
         print(f"   Przypisano wersje do sciezki {track} ze statusem '{status}'.")
 
         print("\n4. Zatwierdzanie zmian w Google Play Console (Commit)...")
-        commit_resp = service.edits().commit(packageName=PACKAGE_NAME, editId=edit_id).execute()
+        try:
+            commit_resp = service.edits().commit(packageName=PACKAGE_NAME, editId=edit_id, changesNotSentForReview=True).execute()
+        except Exception as e:
+            commit_resp = service.edits().commit(packageName=PACKAGE_NAME, editId=edit_id).execute()
         print("   SUKCES! Zmiany zostaly zatwierdzone w Google Play Console!")
         print("\n========================================================")
         print(f"Wersja {version_code} zostala pomyslnie wyslana i opublikowana w Google Play!")
