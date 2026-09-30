@@ -109,7 +109,16 @@ if ($outputAab) {
     Write-Host "SUKCES! Gotowa, produkcyjnie podpisana paczka AAB:" -ForegroundColor Green
     Write-Host $outputAab.FullName -ForegroundColor Yellow
     Write-Host "========================================================`n" -ForegroundColor Green
-    Write-Host "Mozesz teraz wgrac ten plik bezposrednio do Google Play Console." -ForegroundColor Cyan
+
+    $uploadScript = Join-Path $scriptDir "upload-to-googleplay.py"
+    if (Test-Path $uploadScript) {
+        $sendChoice = Read-Host "Czy chcesz automatycznie przeslac te paczke do Google Play Console? (T/N) [Domyslnie: T]"
+        if ([string]::IsNullOrWhiteSpace($sendChoice) -or $sendChoice.ToUpper() -eq "T") {
+            python "$uploadScript" "$($outputAab.FullName)"
+        } else {
+            Write-Host "Pominiecie wysylania. Mozesz wgrac plik recznie w Google Play Console." -ForegroundColor Yellow
+        }
+    }
 } else {
     $fallbackAab = Get-ChildItem -Path $binAndroidRelease -Filter "*.aab" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($fallbackAab) {
