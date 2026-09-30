@@ -76,12 +76,12 @@ if (-not [string]::IsNullOrWhiteSpace($keytoolPath) -and (Test-Path $keytoolPath
     Write-Host "Haslo prawidlowe!" -ForegroundColor Green
 }
 
-# Czyszczenie zablokowanych lub przestarzałych plików obj/Release i AAB
+# Czyszczenie zablokowanych lub przestarzałych plików obj i AAB
 Write-Host "`nCzyszczenie tymczasowych plikow kompilacji..." -ForegroundColor Gray
-$objRelease = Join-Path $scriptDir "nAnyWebApp\obj\Release"
-if (Test-Path $objRelease) {
-    & attrib -r "$objRelease\*.*" /s /d 2>$null
-    Remove-Item -Path $objRelease -Recurse -Force -ErrorAction SilentlyContinue
+$objDir = Join-Path $scriptDir "nAnyWebApp\obj"
+if (Test-Path $objDir) {
+    & attrib -r "$objDir\*.*" /s /d 2>$null
+    Remove-Item -Path $objDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 $binAndroidRelease = Join-Path $scriptDir "nAnyWebApp\bin\Release\net9.0-android"
