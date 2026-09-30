@@ -364,4 +364,8 @@ FodyWeavers.xsd
 
 # Android Keystores & Signing Keys
 *.keystore
-*.jks
+*.jks
+*client*.json
+*service-account*.json
+gen-lang-*.json
+

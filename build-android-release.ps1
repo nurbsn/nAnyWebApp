@@ -80,6 +80,7 @@ if (-not [string]::IsNullOrWhiteSpace($keytoolPath) -and (Test-Path $keytoolPath
 Write-Host "`nCzyszczenie tymczasowych plikow kompilacji..." -ForegroundColor Gray
 $objRelease = Join-Path $scriptDir "nAnyWebApp\obj\Release"
 if (Test-Path $objRelease) {
+    & attrib -r "$objRelease\*.*" /s /d 2>$null
     Remove-Item -Path $objRelease -Recurse -Force -ErrorAction SilentlyContinue
 }
 
